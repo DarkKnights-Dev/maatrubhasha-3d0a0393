@@ -1,20 +1,22 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/lib/auth-context";
-import { sampleLessons } from "@/lib/data";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { BookOpen, Clock, Flame, ArrowRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-const quizHistory = [
-  { name: "Fractions", score: 80 },
-  { name: "Water Cycle", score: 100 },
-  { name: "Addition", score: 60 },
-  { name: "Solar System", score: 90 },
-  { name: "Shapes", score: 70 },
-];
+interface Lesson {
+  id: string;
+  title: string;
+  subject: string;
+  language: string;
+  grade: number;
+  duration_mins: number;
+}
 
 const subjectProgress = [
   { subject: "Mathematics", progress: 65 },
@@ -28,6 +30,39 @@ export default function Dashboard() {
   const name = profile?.name || "Student";
   const language = profile?.language || "your language";
   const streak = profile?.streak || 5;
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [quizHistory, setQuizHistory] = useState<{ name: string; score: number }[]>([]);
+
+  useEffect(() => {
+    const fetchLessons = async () => {
+      const { data } = await supabase.from("lessons").select("id, title, subject, language, grade, duration_mins");
+      if (data) setLessons(data);
+    };
+    const fetchQuizHistory = async () => {
+      if (!profile?.user_id) return;
+      const { data } = await supabase
+        .from("quiz_attempts")
+        .select("score, lesson_id, lessons(title)")
+        .eq("user_id", profile.user_id)
+        .order("completed_at", { ascending: false })
+        .limit(5);
+      if (data && data.length > 0) {
+        setQuizHistory(data.map((d: any) => ({ name: d.lessons?.title?.split("—")[0]?.trim() || "Quiz", score: d.score })));
+      } else {
+        setQuizHistory([
+          { name: "Fractions", score: 80 },
+          { name: "Water Cycle", score: 100 },
+          { name: "Addition", score: 60 },
+          { name: "Solar System", score: 90 },
+          { name: "Shapes", score: 70 },
+        ]);
+      }
+    };
+    fetchLessons();
+    fetchQuizHistory();
+  }, [profile]);
+
+  const todayLesson = lessons[0];
 
   return (
     <SidebarProvider>
@@ -44,33 +79,32 @@ export default function Dashboard() {
           </header>
 
           <main className="flex-1 overflow-auto p-6 space-y-6">
-            {/* Welcome */}
             <div className="bg-card border border-border rounded-lg p-6 card-glow">
               <h2 className="font-heading text-xl font-bold">Welcome back, {name}! 👋</h2>
               <p className="text-muted-foreground mt-1">Ready to learn in {language}?</p>
             </div>
 
-            {/* Today's lesson */}
-            <div className="bg-card border border-primary/30 rounded-lg p-6 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg gold-gradient flex items-center justify-center">
-                  <BookOpen className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Today's Lesson</p>
-                  <h3 className="font-heading font-semibold">{sampleLessons[0].title}</h3>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    <Clock className="h-3 w-3" /> {sampleLessons[0].duration_mins} mins
-                    <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs">{sampleLessons[0].language}</span>
+            {todayLesson && (
+              <div className="bg-card border border-primary/30 rounded-lg p-6 flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg gold-gradient flex items-center justify-center">
+                    <BookOpen className="h-6 w-6 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Today's Lesson</p>
+                    <h3 className="font-heading font-semibold">{todayLesson.title}</h3>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                      <Clock className="h-3 w-3" /> {todayLesson.duration_mins} mins
+                      <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs">{todayLesson.language}</span>
+                    </div>
                   </div>
                 </div>
+                <Button asChild>
+                  <Link to={`/lesson/${todayLesson.id}`}>Continue <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                </Button>
               </div>
-              <Button asChild>
-                <Link to={`/lesson/${sampleLessons[0].id}`}>Continue <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
-            </div>
+            )}
 
-            {/* Progress + Quiz chart */}
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-card border border-border rounded-lg p-6">
                 <h3 className="font-heading font-semibold mb-4">Subject Progress</h3>
@@ -101,11 +135,10 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* My Lessons */}
             <div>
               <h3 className="font-heading font-semibold text-lg mb-4">My Lessons</h3>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sampleLessons.map(lesson => (
+                {lessons.map(lesson => (
                   <Link to={`/lesson/${lesson.id}`} key={lesson.id}
                     className="bg-card border border-border rounded-lg p-5 hover:border-primary/50 transition-all hover:-translate-y-1 group">
                     <div className="flex items-center gap-2 mb-3">

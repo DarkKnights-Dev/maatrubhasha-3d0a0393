@@ -14,7 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lessons: {
+        Row: {
+          content: string
+          created_at: string
+          duration_mins: number
+          grade: number
+          id: string
+          language: string
+          subject: string
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          duration_mins?: number
+          grade: number
+          id?: string
+          language: string
+          subject: string
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          duration_mins?: number
+          grade?: number
+          id?: string
+          language?: string
+          subject?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          grade: number
+          id: string
+          language: string
+          name: string
+          role: string
+          streak: number
+          subjects: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          grade?: number
+          id?: string
+          language?: string
+          name?: string
+          role?: string
+          streak?: number
+          subjects?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          grade?: number
+          id?: string
+          language?: string
+          name?: string
+          role?: string
+          streak?: number
+          subjects?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quiz_attempts: {
+        Row: {
+          completed_at: string
+          id: string
+          lesson_id: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          lesson_id: string
+          score: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          lesson_id?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

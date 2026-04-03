@@ -1,21 +1,44 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { sampleLessons } from "@/lib/data";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Volume2, BookOpen, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { sampleLessons } from "@/lib/data";
+
+interface LessonData {
+  id: string;
+  title: string;
+  subject: string;
+  language: string;
+  grade: number;
+  content: string;
+  duration_mins: number;
+}
 
 export default function Lesson() {
   const { id } = useParams();
-  const lesson = sampleLessons.find(l => l.id === id);
   const { toast } = useToast();
+  const [lesson, setLesson] = useState<LessonData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!lesson) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Lesson not found.</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const fetchLesson = async () => {
+      const { data } = await supabase.from("lessons").select("*").eq("id", id!).maybeSingle();
+      if (data) {
+        setLesson(data as LessonData);
+      } else {
+        // Fallback to sample data for demo
+        const sample = sampleLessons.find(l => l.id === id);
+        if (sample) setLesson({ ...sample, id: sample.id });
+      }
+      setLoading(false);
+    };
+    fetchLesson();
+  }, [id]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Loading...</p></div>;
+  if (!lesson) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Lesson not found.</p></div>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,7 +68,6 @@ export default function Lesson() {
           ))}
         </div>
 
-        {/* Cultural story section */}
         <div className="bg-secondary/50 border border-primary/20 rounded-lg p-6 mb-8">
           <div className="flex items-center gap-2 mb-3">
             <BookOpen className="h-5 w-5 text-primary" />

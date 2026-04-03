@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { LANGUAGES, GRADES } from "@/lib/data";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,16 @@ export default function SettingsPage() {
     }
   }, [profile]);
 
-  const handleSave = () => {
-    if (user && profile) {
-      const updated = { ...profile, language, grade };
-      localStorage.setItem(`profile_${user.id}`, JSON.stringify(updated));
-      refreshProfile();
+  const handleSave = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ language, grade })
+      .eq("user_id", user.id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      await refreshProfile();
       toast({ title: "Settings saved!", description: "Your preferences have been updated." });
     }
   };
@@ -41,7 +47,6 @@ export default function SettingsPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-lg space-y-6">
-        {/* Account info */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h3 className="font-heading font-semibold mb-4">Account</h3>
           <div className="space-y-2 text-sm">
@@ -51,7 +56,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Language */}
         <div className="bg-card border border-border rounded-lg p-6">
           <Label className="font-heading font-semibold">Language Preference 🇮🇳</Label>
           <select value={language} onChange={e => setLanguage(e.target.value)}
@@ -60,7 +64,6 @@ export default function SettingsPage() {
           </select>
         </div>
 
-        {/* Grade */}
         <div className="bg-card border border-border rounded-lg p-6">
           <Label className="font-heading font-semibold">Grade</Label>
           <select value={grade} onChange={e => setGrade(Number(e.target.value))}
