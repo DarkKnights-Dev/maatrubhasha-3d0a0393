@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
 import { LANGUAGES, SUBJECTS, GRADES } from "@/lib/data";
 import { Check, ChevronRight } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Onboard() {
   const [step, setStep] = useState(1);
@@ -13,22 +15,24 @@ export default function Onboard() {
   const [subjects, setSubjects] = useState<string[]>([]);
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const toggleSubject = (s: string) => {
     setSubjects(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
   };
 
   const handleFinish = async () => {
-    if (user) {
-      const existing = localStorage.getItem(`profile_${user.id}`);
-      const profile = existing ? JSON.parse(existing) : { id: user.id, name: "", email: "", role: "student", streak: 0 };
-      profile.language = language;
-      profile.grade = grade;
-      profile.subjects = subjects;
-      localStorage.setItem(`profile_${user.id}`, JSON.stringify(profile));
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ language, grade, subjects })
+      .eq("user_id", user.id);
+    if (error) {
+      toast({ title: "Error saving preferences", description: error.message, variant: "destructive" });
+    } else {
       await refreshProfile();
+      navigate("/dashboard");
     }
-    navigate("/dashboard");
   };
 
   return (

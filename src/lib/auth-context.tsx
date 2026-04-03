@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 
 interface Profile {
   id: string;
+  user_id: string;
   name: string;
   email: string;
   role: string;
@@ -37,11 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    // For now use localStorage mock since tables aren't created yet
-    const stored = localStorage.getItem(`profile_${userId}`);
-    if (stored) {
-      setProfile(JSON.parse(stored));
-    }
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (data) setProfile(data as Profile);
   };
 
   const refreshProfile = async () => {
@@ -50,10 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          setTimeout(() => fetchProfile(session.user.id), 0);
         } else {
           setProfile(null);
         }

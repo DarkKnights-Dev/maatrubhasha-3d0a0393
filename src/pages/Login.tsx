@@ -17,15 +17,14 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
-    } else {
-      const profile = localStorage.getItem(`profile_${(await supabase.auth.getUser()).data.user?.id}`);
-      if (profile) {
-        const p = JSON.parse(profile);
-        navigate(p.role === "teacher" ? "/teacher" : "/dashboard");
+    } else if (data.user) {
+      const { data: profile } = await supabase.from("profiles").select("role, language").eq("user_id", data.user.id).maybeSingle();
+      if (profile && profile.language) {
+        navigate(profile.role === "teacher" ? "/teacher" : "/dashboard");
       } else {
         navigate("/onboard");
       }
