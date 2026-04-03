@@ -1,26 +1,39 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { sampleQuizQuestions, sampleLessons } from "@/lib/data";
+import { sampleQuizQuestions } from "@/lib/data";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Quiz() {
   const { id } = useParams();
+  const { user } = useAuth();
+  // For demo, use sample quiz for any lesson (fallback to lesson 1)
   const questions = sampleQuizQuestions[id || "1"] || sampleQuizQuestions["1"];
-  const lesson = sampleLessons.find(l => l.id === id);
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [answers, setAnswers] = useState<number[]>([]);
   const [done, setDone] = useState(false);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (selected === null) return;
     const newAnswers = [...answers, selected];
     setAnswers(newAnswers);
     setSelected(null);
     if (current + 1 >= questions.length) {
       setDone(true);
+      // Save score to Supabase
+      const score = newAnswers.reduce((acc, a, i) => acc + (a === questions[i].correct ? 1 : 0), 0);
+      const pct = Math.round((score / questions.length) * 100);
+      if (user && id) {
+        await supabase.from("quiz_attempts").insert({
+          user_id: user.id,
+          lesson_id: id,
+          score: pct,
+        });
+      }
     } else {
       setCurrent(current + 1);
     }
@@ -61,7 +74,7 @@ export default function Quiz() {
           <Button variant="ghost" size="sm" asChild>
             <Link to={`/lesson/${id}`}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
           </Button>
-          <span className="text-sm text-muted-foreground">{lesson?.title}</span>
+          <span className="text-sm text-muted-foreground">Quiz</span>
         </div>
       </header>
 
